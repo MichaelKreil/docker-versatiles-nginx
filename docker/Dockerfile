@@ -20,9 +20,9 @@ ENV UID=10001 GID=10001 \
     CACHE_SIZE_MAX=""
 
 # core packages
-RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata \
- && mkdir -p /var/cache/nginx /etc/nginx/templates /data \
- && addgroup -g "$GID" vs && adduser -D -s /sbin/nologin -G vs -u "$UID" vs
+RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini gzip && \
+    mkdir -p /var/cache/nginx /etc/nginx/templates /data && \
+    addgroup -g "$GID" vs && adduser -D -s /sbin/nologin -G vs -u "$UID" vs
 
 # copy VersaTiles binary from builder
 COPY --from=builder /usr/local/bin/versatiles /usr/local/bin/versatiles
@@ -36,4 +36,4 @@ EXPOSE 80 443
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://127.0.0.1:8090/_nginx_status || exit 1
 
-ENTRYPOINT ["bash", "/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/sbin/tini","--","/usr/local/bin/entrypoint.sh"]
