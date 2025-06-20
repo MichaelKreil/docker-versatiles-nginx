@@ -27,6 +27,8 @@ CACHE_MAX=${CACHE_SIZE_MAX:-$MAX_AUTO}
 
 # frontend download (optional)
 mkdir -p /data/frontend
+# ensure persistent certificate directories exist
+mkdir -p /data/certificates /data/certificates/work /data/certificates/logs
 if [ "${FRONTEND_VARIANT}" != "none" ]; then
   case "${FRONTEND_VARIANT}" in
     "dev") FRONTEND_VARIANT="frontend-dev" ;;
@@ -34,13 +36,13 @@ if [ "${FRONTEND_VARIANT}" != "none" ]; then
     *) FRONTEND_VARIANT="frontend";;
   esac
 
-  FILENAME="${FRONTEND_VARIANT}.br.tar.gz"
-  PATH="/data/frontend/${FILENAME}"
-  if [ ! -f "${PATH}" ]; then
+  filename="${FRONTEND_VARIANT}.br.tar.gz"
+  filepath="/data/frontend/${filename}"
+  if [ ! -f "${filepath}" ]; then
     log "Downloading ${FRONTEND_VARIANT} …"
-    curl -L "https://github.com/versatiles-org/versatiles-frontend/releases/latest/download/${FILENAME}" -o "${PATH}"
+    curl -L "https://github.com/versatiles-org/versatiles-frontend/releases/latest/download/${filename}" -o "${filepath}"
   fi
-  VERSATILES_ARGS+=" --static ${PATH}"
+  VERSATILES_ARGS+=" --static ${filepath}"
 fi
 
 # user defined static files
@@ -50,13 +52,13 @@ VERSATILES_ARGS+=" --static /data/static"
 # ensure local tile sources exist or fetch them
 mkdir -p /data/tiles
 IFS=',' read -ra TS <<< "${TILE_SOURCES}"
-for SRC in "${TS[@]}"; do
-  [ -z "$SRC" ] && continue
-  if [ ! -f "/data/tiles/$SRC" ]; then
-    log "Fetching missing tile source $SRC …"
-    curl -L "https://download.versatiles.org/$SRC" -o "/data/tiles/$SRC"
+for src in "${TS[@]}"; do
+  [ -z "$src" ] && continue
+  if [ ! -f "/data/tiles/$src" ]; then
+    log "Fetching missing tile source $src …"
+    curl -L "https://download.versatiles.org/$src" -o "/data/tiles/$src"
   fi
-  VERSATILES_ARGS+=" /data/tiles/$SRC"
+  VERSATILES_ARGS+=" /data/tiles/$src"
 done
 
 ############### nginx stub ############
@@ -89,7 +91,11 @@ NGINX_STUB_PID=$!
 
 ############### ACME ##################
 log "Requesting/renewing certificate …"
-certbot --nginx -n --agree-tos -m "$EMAIL" -d "$DOMAIN"
+certbot --nginx -n --agree-tos \
+  --config-dir /data/certificates \
+  --work-dir /data/certificates/work \
+  --logs-dir /data/certificates/logs \
+  -m "$EMAIL" -d "$DOMAIN"
 
 ############### nginx full TLS config ############
 cat >/etc/nginx/nginx.conf <<EOF
@@ -118,7 +124,7 @@ http {
   server {
     listen 80 default_server;
     server_name ${DOMAIN};
-    return 301 https://$host$request_uri;
+    return 301 https://\$host\$request_uri;
   }
 
   # HTTPS server
@@ -126,13 +132,13 @@ http {
     listen 443 ssl http2;
     server_name ${DOMAIN};
 
-    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_certificate     /data/certificates/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /data/certificates/live/${DOMAIN}/privkey.pem;
 
     # frontend (if any)
     location / {
       root /data/frontend;
-      try_files $uri /index.html =404;
+      try_files \$uri /index.html =404;
     }
 
     # tile backend
@@ -140,14 +146,19 @@ http {
       proxy_pass http://127.0.0.1:8080/;
       proxy_cache tiles;
       proxy_cache_valid 200 60m;
-      add_header X-Cache $upstream_cache_status;
+      add_header X-Cache \$upstream_cache_status;
     }
   }
 }
 EOF
 
+# Stop the stub only if it is still running (certbot may have reloaded nginx)
+if kill -0 "$NGINX_STUB_PID" 2>/dev/null; then
+  kill -TERM "$NGINX_STUB_PID"
+  wait "$NGINX_STUB_PID" || true
+fi
+
 # reload nginx with full conf
-kill -TERM "$NGINX_STUB_PID"
 nginx
 
 ############### start VersaTiles ############
