@@ -9,12 +9,12 @@ RUN curl -Ls https://github.com/versatiles-org/versatiles-rs/raw/main/scripts/in
 
 # ---------- runtime stage ----------
 FROM alpine:latest
-LABEL maintainer="you@example.com"
+LABEL maintainer="versatiles@michael-kreil.de"
 
 ENV UID=10001 GID=10001 \
     DOMAIN="" \
     EMAIL="" \
-    FRONTEND_VARIANT="frontend" \
+    FRONTEND_VARIANT="" \
     TILE_SOURCES="" \
     CACHE_SIZE_KEYS="" \
     CACHE_SIZE_MAX=""
@@ -30,9 +30,6 @@ COPY --from=builder /usr/local/bin/versatiles /usr/local/bin/versatiles
 # copy entrypoint
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# minimal nginx conf to be templated later
-COPY nginx_stub.conf /etc/nginx/templates/stub.conf.template
 
 VOLUME ["/data"]
 EXPOSE 80 443

@@ -15,6 +15,7 @@ calc_cache() {
 ############### pre‑flight ############
 require DOMAIN
 require EMAIL
+VERSATILES_ARGS=""
 
 # fix ownership of the unified volume
 chown -R vs:vs /data || true
@@ -25,26 +26,37 @@ CACHE_KEYS=${CACHE_SIZE_KEYS:-$KEY_AUTO}
 CACHE_MAX=${CACHE_SIZE_MAX:-$MAX_AUTO}
 
 # frontend download (optional)
+mkdir -p /data/frontend
 if [ "${FRONTEND_VARIANT}" != "none" ]; then
-  FRONTEND_DIR="/data/frontend"
-  TAR_NAME="${FRONTEND_VARIANT}.tar.gz"
-  if [ ! -f "${FRONTEND_DIR}/${TAR_NAME}" ]; then
-    log "Downloading frontend ${TAR_NAME} …"
-    mkdir -p "${FRONTEND_DIR}" && \
-    curl -L "https://github.com/versatiles-org/versatiles-frontend/releases/latest/download/${TAR_NAME}" -o "${FRONTEND_DIR}/${TAR_NAME}"
-    tar -xf "${FRONTEND_DIR}/${TAR_NAME}" -C "${FRONTEND_DIR}"
+  case "${FRONTEND_VARIANT}" in
+    "dev") FRONTEND_VARIANT="frontend-dev" ;;
+    "min") FRONTEND_VARIANT="frontend-min" ;;
+    *) FRONTEND_VARIANT="frontend";;
+  esac
+
+  FILENAME="${FRONTEND_VARIANT}.br.tar.gz"
+  PATH="/data/frontend/${FILENAME}"
+  if [ ! -f "${PATH}" ]; then
+    log "Downloading ${FRONTEND_VARIANT} …"
+    curl -L "https://github.com/versatiles-org/versatiles-frontend/releases/latest/download/${FILENAME}" -o "${PATH}"
   fi
+  VERSATILES_ARGS+=" --static ${PATH}"
 fi
 
+# user defined static files
+mkdir -p /data/static
+VERSATILES_ARGS+=" --static /data/static"
+
 # ensure local tile sources exist or fetch them
+mkdir -p /data/tiles
 IFS=',' read -ra TS <<< "${TILE_SOURCES}"
-for src in "${TS[@]}"; do
-  [ -z "$src" ] && continue
-  if [ ! -f "/data/tiles/$src" ]; then
-    log "Fetching missing tile source $src …"
-    mkdir -p /data/tiles
-    curl -L "https://download.versatiles.org/$src" -o "/data/tiles/$src"
+for SRC in "${TS[@]}"; do
+  [ -z "$SRC" ] && continue
+  if [ ! -f "/data/tiles/$SRC" ]; then
+    log "Fetching missing tile source $SRC …"
+    curl -L "https://download.versatiles.org/$SRC" -o "/data/tiles/$SRC"
   fi
+  VERSATILES_ARGS+=" /data/tiles/$SRC"
 done
 
 ############### nginx stub ############
@@ -140,4 +152,4 @@ nginx
 
 ############### start VersaTiles ############
 log "Launching VersaTiles backend …"
-exec su-exec vs:vs versatiles serve -b 127.0.0.1:8080 $(for s in "${TS[@]}"; do printf ' /data/tiles/%s' "$s"; done)
+exec su-exec vs:vs versatiles serve -p 8080 $VERSATILES_ARGS
