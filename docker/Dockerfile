@@ -18,7 +18,7 @@ ENV UID=10001 GID=10001 \
     TILE_SOURCES="" \
     CACHE_SIZE_KEYS="" \
     CACHE_SIZE_MAX="" \
-    PATH="$PATH:/scripts"
+    PATH="/scripts:${PATH}"
 
 # core packages
 RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini gzip && \
