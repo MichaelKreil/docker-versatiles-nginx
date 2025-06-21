@@ -1,5 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
+# Always run from repo root
 cd "$(dirname "$0")/../docker"
 
-docker build --progress=plain -t versatiles-nginx:latest -f Dockerfile .
+# Build and load into the local Docker engine; remove --load if you’ll push instead
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    --progress=plain \
+    --tag versatiles-nginx:latest \
+    --load \
+    .
