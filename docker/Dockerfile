@@ -2,10 +2,10 @@
 FROM alpine:latest AS builder
 
 # runtime deps for versatiles build script
-RUN apk add --no-cache curl ca-certificates sudo
+RUN apk add --no-cache curl ca-certificates
 
 # download the static VersaTiles binary
-RUN curl -Ls https://github.com/versatiles-org/versatiles-rs/raw/main/scripts/install-unix.sh | sudo sh
+RUN curl -Ls https://github.com/versatiles-org/versatiles-rs/raw/main/scripts/install-unix.sh | sh
 
 # ---------- runtime stage ----------
 FROM alpine:latest
@@ -18,7 +18,7 @@ ENV UID=10001 GID=10001 \
     TILE_SOURCES="" \
     CACHE_SIZE_KEYS="" \
     CACHE_SIZE_MAX="" \
-    PATH="/scripts:${PATH}"
+    PATH="/scripts:$PATH"
 
 # core packages
 RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini gzip &&
@@ -29,7 +29,7 @@ RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini
 COPY --from=builder /usr/local/bin/versatiles /usr/local/bin/versatiles
 
 # copy entrypoint
-COPY scripts/ /scripts/
+COPY scripts/*.sh /scripts/
 RUN chmod +x /scripts/*.sh
 
 VOLUME ["/data"]
