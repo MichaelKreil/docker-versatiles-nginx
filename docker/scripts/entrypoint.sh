@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+. /scripts/utils.sh
+
 ############### helper ################
-log() { echo "[$(date +%FT%T%z)] $*"; }
+
 require() { [ -n "${!1:-}" ] || {
   echo "Env \$${1} is required"
   exit 1
@@ -144,7 +146,7 @@ http {
     location / {
       proxy_pass http://127.0.0.1:8080;
       proxy_cache tiles;
-      proxy_cache_valid 200 60m;
+      proxy_cache_valid any 5m;
       add_header X-Cache \$upstream_cache_status;
     }
   }

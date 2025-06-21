@@ -1,13 +1,13 @@
-### Build (multi‑arch)
+## Build (multi‑arch)
 
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 -t versatiles-nginx:latest .
-````
+```
 
-### Run
+## Run
 
 ```bash
-docker run -d --name maps \
+docker run -d --name versatiles-nginx \
   -e DOMAIN=maps.example.com \
   -e EMAIL=admin@example.com \
   -e FRONTEND_VARIANT=frontend-dev \
@@ -18,6 +18,13 @@ docker run -d --name maps \
   versatiles-nginx:latest
 ```
 
-### Healthcheck
+## Reset Cache
+
+```bash
+docker exec versatiles-nginx clear_cache.sh
+```
+
+
+## Healthcheck
 
 `docker ps` will show `healthy` when nginx responds on `/_nginx_status`.

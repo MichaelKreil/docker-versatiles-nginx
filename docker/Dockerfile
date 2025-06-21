@@ -17,7 +17,8 @@ ENV UID=10001 GID=10001 \
     FRONTEND_VARIANT="" \
     TILE_SOURCES="" \
     CACHE_SIZE_KEYS="" \
-    CACHE_SIZE_MAX=""
+    CACHE_SIZE_MAX="" \
+    PATH="$PATH:/scripts"
 
 # core packages
 RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini gzip && \
@@ -28,12 +29,12 @@ RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini
 COPY --from=builder /usr/local/bin/versatiles /usr/local/bin/versatiles
 
 # copy entrypoint
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
 
 VOLUME ["/data"]
 EXPOSE 80 443
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -f http://127.0.0.1:8090/_nginx_status || exit 1
 
-ENTRYPOINT ["/sbin/tini","--","/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/sbin/tini","--","entrypoint.sh"]
