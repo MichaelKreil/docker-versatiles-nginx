@@ -14,15 +14,15 @@ LABEL maintainer="versatiles@michael-kreil.de"
 ENV UID=10001 GID=10001 \
     DOMAIN="" \
     EMAIL="" \
-    FRONTEND_VARIANT="" \
+    FRONTEND="" \
     TILE_SOURCES="" \
     CACHE_SIZE_KEYS="" \
     CACHE_SIZE_MAX="" \
     PATH="/scripts:${PATH}"
 
 # core packages
-RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini gzip && \
-    mkdir -p /var/cache/nginx /etc/nginx/templates /data && \
+RUN apk add --no-cache nginx certbot certbot-nginx curl bash su-exec tzdata tini gzip &&
+    mkdir -p /var/cache/nginx /etc/nginx/templates /data &&
     addgroup -g "$GID" vs && adduser -D -s /sbin/nologin -G vs -u "$UID" vs
 
 # copy VersaTiles binary from builder
